@@ -1,0 +1,153 @@
+.authPage {
+  min-height: 100vh;
+  background-size: cover;
+  background-position: center;
+  background-image: url('https://assets.nflxext.com/ffe/siteui/vlv3/9d3533b2-0e2b-40b2-95e4-41ca908c5454/67cd99d2-5d4b-4bc3-899e-d9dff008bfc2/IN-en-20231218-popsignuptwoweeks-perspective_alpha_website_large.jpg');
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  position: relative;
+}
+
+.authOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 0;
+}
+
+.authCard {
+  position: relative;
+  z-index: 1;
+  background: rgba(0, 0, 0, 0.78);
+  border-radius: var(--border-radius-lg);
+  padding: 48px 60px;
+  width: 100%;
+  max-width: 460px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.authLogo {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--netflix-red);
+  letter-spacing: 0.5px;
+  text-align: center;
+  margin-bottom: -8px;
+}
+
+.authTitle {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--text-primary);
+}
+
+.authForm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.authInputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.authLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.authInput {
+  padding: 14px 16px;
+  background-color: #333333;
+  border: 1px solid #545454;
+  border-radius: var(--border-radius-sm);
+  color: var(--text-primary);
+  font-size: 16px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.authInput:focus {
+  border-color: #ababab;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
+.authInput::placeholder {
+  color: #888;
+}
+
+.authSubmitBtn {
+  padding: 14px;
+  background-color: var(--netflix-red);
+  color: var(--netflix-white);
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+  width: 100%;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.authSubmitBtn:hover:not(:disabled) {
+  background-color: var(--netflix-red-hover);
+}
+
+.authSubmitBtn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.authSubmitBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.authError {
+  background-color: rgba(229, 9, 20, 0.15);
+  border: 1px solid rgba(229, 9, 20, 0.4);
+  padding: 12px 16px;
+  border-radius: var(--border-radius-sm);
+  font-size: 14px;
+  color: #ff7f7f;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.authFooter {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.authFooter a {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.authFooter a:hover {
+  text-decoration: underline;
+}
+
+.mockAuthNotice {
+  text-align: center;
+  font-size: 12px;
+  color: #666;
+  padding: 8px 0 0;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  line-height: 1.5;
+}

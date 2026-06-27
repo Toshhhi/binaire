@@ -1,0 +1,152 @@
+.searchBarContainer {
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: var(--font-body);
+  z-index: 100;
+}
+
+.searchInputsRow {
+  display: flex;
+  background-color: var(--netflix-dark-grey);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-sm);
+  overflow: hidden;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.searchInputsRow:focus-within {
+  border-color: var(--text-primary);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+.searchIconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  color: var(--text-muted);
+}
+
+.searchInput {
+  flex: 1;
+  padding: 14px 16px 14px 0;
+  font-size: 16px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+}
+
+.searchInput::placeholder {
+  color: var(--text-muted);
+}
+
+.searchTypeSelect {
+  background-color: var(--netflix-grey);
+  color: var(--text-primary);
+  padding: 0 16px;
+  border-left: 1px solid var(--glass-border);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.searchTypeSelect option {
+  background-color: var(--netflix-dark-grey);
+  color: var(--text-primary);
+}
+
+/* Autocomplete suggestions */
+.autocompleteDropdown {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  width: 100%;
+  background-color: #1a1a1a;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-overlay);
+  overflow: hidden;
+  z-index: 200;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.autocompleteItem {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  transition: background-color var(--transition-fast);
+}
+
+.autocompleteItem:hover {
+  background-color: var(--netflix-grey);
+}
+
+.autocompletePoster {
+  width: 40px;
+  height: 55px;
+  object-fit: cover;
+  border-radius: var(--border-radius-sm);
+  background-color: #2b2b2b;
+}
+
+.autocompleteDetails {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* allows text truncation */
+}
+
+.autocompleteTitle {
+  font-size: 14px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.autocompleteMeta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.autocompleteRating {
+  color: var(--netflix-green);
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.searchIndexingBanner {
+  font-size: 13px;
+  color: var(--netflix-light-grey);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.searchIndexingSpinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-left-color: var(--netflix-light-grey);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}

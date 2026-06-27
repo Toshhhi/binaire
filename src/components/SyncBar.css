@@ -1,0 +1,16 @@
+.syncBar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  z-index: 1100;
+}
+
+.syncBarFill {
+  height: 100%;
+  background: var(--netflix-red);
+  transition: width 0.35s ease;
+  box-shadow: 0 0 8px rgba(229, 9, 20, 0.6);
+}

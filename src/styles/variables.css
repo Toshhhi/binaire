@@ -1,0 +1,42 @@
+:root {
+  /* Color Palette */
+  --netflix-red: #E50914;
+  --netflix-red-hover: #C11119;
+  --netflix-black: #141414;
+  --netflix-dark-grey: #181818;
+  --netflix-grey: #2F2F2F;
+  --netflix-light-grey: #808080;
+  --netflix-white: #FFFFFF;
+  --netflix-green: #46D369;
+  
+  /* Text Colors */
+  --text-primary: #FFFFFF;
+  --text-secondary: #E5E5E5;
+  --text-muted: #AAAAAA;
+  
+  /* Typography */
+  --font-display: 'Outfit', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  
+  /* Spacing */
+  --nav-height: 70px;
+  --sidebar-width: 240px;
+  
+  /* Borders & Radius */
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  --border-radius-full: 9999px;
+  
+  /* Shadows & Glassmorphism */
+  --shadow-card: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-overlay: 0 10px 25px rgba(0, 0, 0, 0.5);
+  --glass-bg: rgba(20, 20, 20, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-blur: blur(20px);
+  
+  /* Animations & Transitions */
+  --transition-fast: 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --transition-normal: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  --transition-slow: 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+}

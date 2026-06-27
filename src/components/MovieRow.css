@@ -1,0 +1,116 @@
+.movieRowContainer {
+  margin: 3vw 0;
+  padding: 0 4%;
+  position: relative;
+  font-family: var(--font-body);
+}
+
+.movieRowContainer:first-of-type {
+  margin-top: -80px; /* Pull the first row slightly over the Hero banner overlay */
+  position: relative;
+  z-index: 10;
+}
+
+.rowTitle {
+  font-size: 1.4vw;
+  font-family: var(--font-display);
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--netflix-white);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+  display: inline-block;
+  transition: color var(--transition-fast);
+}
+
+.rowTitle:hover {
+  color: var(--netflix-red);
+}
+
+.sliderWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.sliderContainer {
+  display: flex;
+  gap: 12px;
+  overflow-x: scroll;
+  scroll-behavior: smooth;
+  width: 100%;
+  padding: 10px 0;
+}
+
+/* Hide scrollbars for the horizontal slider */
+.sliderContainer::-webkit-scrollbar {
+  display: none;
+}
+
+.cardWrapper {
+  flex: 0 0 calc(100% / 2 - 6px); /* Mobile fallback */
+  width: calc(100% / 2 - 6px);
+}
+
+@media (min-width: 600px) {
+  .cardWrapper {
+    flex: 0 0 calc(100% / 3 - 8px);
+    width: calc(100% / 3 - 8px);
+  }
+}
+
+@media (min-width: 900px) {
+  .cardWrapper {
+    flex: 0 0 calc(100% / 4 - 9px);
+    width: calc(100% / 4 - 9px);
+  }
+}
+
+@media (min-width: 1200px) {
+  .cardWrapper {
+    flex: 0 0 calc(100% / 6 - 10px);
+    width: calc(100% / 6 - 10px);
+  }
+}
+
+/* Nav arrows on edges */
+.rowArrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 45px;
+  height: 80%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(20, 20, 20, 0.5);
+  color: var(--netflix-white);
+  cursor: pointer;
+  border-radius: var(--border-radius-sm);
+  opacity: 0;
+  transition: opacity var(--transition-fast), background-color var(--transition-fast);
+  z-index: 5;
+}
+
+.rowArrow.left {
+  left: -20px;
+}
+
+.rowArrow.right {
+  right: -20px;
+}
+
+.movieRowContainer:hover .rowArrow {
+  opacity: 1;
+}
+
+.rowArrow:hover {
+  background-color: rgba(20, 20, 20, 0.85);
+  color: var(--netflix-red);
+}
+
+.emptyRowMessage {
+  padding: 20px 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-style: italic;
+}

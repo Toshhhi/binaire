@@ -1,0 +1,11 @@
+.homePage {
+  background-color: var(--netflix-black);
+  min-height: 100vh;
+  overflow-x: hidden;
+  padding-bottom: 60px;
+}
+
+.homeRows {
+  display: flex;
+  flex-direction: column;
+}

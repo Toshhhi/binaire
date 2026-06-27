@@ -1,0 +1,33 @@
+.offlineBanner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 8px 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 9999;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  font-family: var(--font-body);
+}
+
+.offline {
+  background-color: #d97706; /* Amber-600 */
+  color: #ffffff;
+}
+
+.online {
+  background-color: var(--netflix-green);
+  color: #ffffff;
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
+}
