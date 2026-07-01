@@ -1,25 +1,23 @@
 import React, {
   createContext,
-  useContext,
-  useState,
-  useEffect,
   useCallback,
+  useContext,
+  useEffect,
+  useMemo,
   useRef,
+  useState,
 } from 'react';
-import {
-  getWatchlistFromDB,
-  saveWatchlistItem as dbSaveWatchlist,
-  removeWatchlistItem as dbRemoveWatchlist,
-  getHistoryFromDB,
-  saveHistoryItem as dbSaveHistory,
-  removeHistoryItem as dbRemoveHistory,
-  clearAllHistoryFromDB,
-} from '../services/indexedDB';
-import { loadCatalog, refreshCatalog, TARGET_CATALOG_SIZE } from '../services/api';
-import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useAuth } from './AuthContext';
+import useOnlineStatus from '../hooks/useOnlineStatus';
+import { fetchTitles } from '../services/api';
 
 const AppContext = createContext(null);
+
+const CATALOG_KEY = 'binaire_catalog';
+const WATCHLIST_KEY = 'binaire_watchlist';
+const HISTORY_KEY = 'binaire_watch_history';
+
+const getStorageKey = (base, userId) => `${base}_${userId || 'guest'}`;
 
 const buildSearchIndices = (dataset) => {
   const idIndex = new Map();
@@ -27,31 +25,41 @@ const buildSearchIndices = (dataset) => {
   const yearIndex = new Map();
 
   dataset.forEach((movie) => {
-    idIndex.set(movie.id.toLowerCase(), movie);
+    if (!movie) return;
+    const id = movie.id || movie?.title?.id;
+    const title = movie.title || movie?.title?.titleText?.text || movie.name;
+    const year = movie.year || movie?.releaseYear?.year;
 
-    if (movie.startYear) {
-      if (!yearIndex.has(movie.startYear)) {
-        yearIndex.set(movie.startYear, []);
-      }
-      yearIndex.get(movie.startYear).push(movie);
+    if (id) {
+      idIndex.set(String(id).toLowerCase(), movie);
     }
 
-    const words = movie.primaryTitle
-      .toLowerCase()
-      .replace(/[^\w\s]/g, '')
-      .split(/\s+/);
-
-    words.forEach((word) => {
-      if (word.length >= 2) {
-        if (!titleIndex.has(word)) {
-          titleIndex.set(word, []);
-        }
-        titleIndex.get(word).push(movie);
+    if (title) {
+      const normalized = String(title).trim().toLowerCase();
+      if (!titleIndex.has(normalized)) {
+        titleIndex.set(normalized, []);
       }
-    });
+      titleIndex.get(normalized).push(movie);
+    }
+
+    if (year) {
+      const yearKey = String(year);
+      if (!yearIndex.has(yearKey)) {
+        yearIndex.set(yearKey, []);
+      }
+      yearIndex.get(yearKey).push(movie);
+    }
   });
 
   return { idIndex, titleIndex, yearIndex };
+};
+
+const safeParse = (value) => {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
 };
 
 export const AppProvider = ({ children }) => {
@@ -62,38 +70,22 @@ export const AppProvider = ({ children }) => {
   const [watchHistory, setWatchHistory] = useState([]);
   const [allMovies, setAllMovies] = useState([]);
   const [isDbLoading, setIsDbLoading] = useState(true);
-  const [isIndexing, setIsIndexing] = useState(true);
   const [syncStatus, setSyncStatus] = useState('idle');
-  const [syncCount, setSyncCount] = useState(0);
-
-  const [idIndex, setIdIndex] = useState(new Map());
-  const [titleIndex, setTitleIndex] = useState(new Map());
-  const [yearIndex, setYearIndex] = useState(new Map());
   const [toasts, setToasts] = useState([]);
 
   const toastTimers = useRef(new Map());
-  const catalogAbortRef = useRef(null);
-  const catalogRetryTimer = useRef(null);
-  const catalogRetryDelay = useRef(60_000);
   const wasOffline = useRef(false);
 
-  const applyCatalog = useCallback((dataset) => {
-    setAllMovies(dataset);
-    const indices = buildSearchIndices(dataset);
-    setIdIndex(indices.idIndex);
-    setTitleIndex(indices.titleIndex);
-    setYearIndex(indices.yearIndex);
-    setIsIndexing(false);
-  }, []);
+  const storageUserId = user?.uid || 'guest';
 
   const addToast = useCallback((message, type = 'info') => {
-    const id = Date.now() + Math.random();
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     setToasts((prev) => [...prev, { id, message, type }]);
 
-    const timer = setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
+    const timer = window.setTimeout(() => {
+      setToasts((prev) => prev.filter((toast) => toast.id !== id));
       toastTimers.current.delete(id);
-    }, 3200);
+    }, 4500);
 
     toastTimers.current.set(id, timer);
   }, []);
@@ -101,187 +93,200 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     return () => {
       toastTimers.current.forEach((timer) => clearTimeout(timer));
-      clearTimeout(catalogRetryTimer.current);
-      catalogAbortRef.current?.abort();
+      toastTimers.current.clear();
     };
   }, []);
 
+  const persistMovies = useCallback((movies) => {
+    try {
+      localStorage.setItem(CATALOG_KEY, JSON.stringify(movies));
+    } catch {}
+  }, []);
+
+  const persistWatchlist = useCallback(
+    (list) => {
+      try {
+        localStorage.setItem(
+          getStorageKey(WATCHLIST_KEY, storageUserId),
+          JSON.stringify(list),
+        );
+      } catch {}
+    },
+    [storageUserId],
+  );
+
+  const persistHistory = useCallback(
+    (history) => {
+      try {
+        localStorage.setItem(
+          getStorageKey(HISTORY_KEY, storageUserId),
+          JSON.stringify(history),
+        );
+      } catch {}
+    },
+    [storageUserId],
+  );
+
+  const applyCatalog = useCallback(
+    (movies) => {
+      setAllMovies(movies);
+      persistMovies(movies);
+    },
+    [persistMovies],
+  );
+
   useEffect(() => {
-    if (!user) {
-      setWatchlist([]);
-      setWatchHistory([]);
+    const cached = safeParse(localStorage.getItem(CATALOG_KEY)) || [];
+    setAllMovies(Array.isArray(cached) ? cached : []);
+    setIsDbLoading(false);
+
+    const watchlistCache =
+      safeParse(localStorage.getItem(getStorageKey(WATCHLIST_KEY, storageUserId))) || [];
+    setWatchlist(Array.isArray(watchlistCache) ? watchlistCache : []);
+
+    const historyCache =
+      safeParse(localStorage.getItem(getStorageKey(HISTORY_KEY, storageUserId))) || [];
+    setWatchHistory(Array.isArray(historyCache) ? historyCache : []);
+  }, [storageUserId]);
+
+  const runCatalogLoad = useCallback(
+    async (force = false) => {
+      if (!isOnline) return;
+      setSyncStatus('loading');
+
+      const query =
+        'types=MOVIE&types=TV_SERIES&types=TV_MINI_SERIES&types=TV_SPECIAL&types=TV_MOVIE&sortBy=SORT_BY_POPULARITY&sortOrder=DESC&minVoteCount=5000';
+
+      const result = await fetchTitles(query);
+
+      if (!result.ok) {
+        setSyncStatus('error');
+        addToast('Unable to refresh catalog. Showing offline cache.', 'warning');
+        return;
+      }
+
+      const movies = Array.isArray(result.data?.titles)
+        ? result.data.titles
+        : Array.isArray(result.data?.results)
+        ? result.data.results
+        : Array.isArray(result.data)
+        ? result.data
+        : [];
+
+      applyCatalog(movies);
+      setSyncStatus('synced');
+      if (force) {
+        addToast('Content updated after reconnecting.', 'success');
+      }
+    },
+    [addToast, applyCatalog, isOnline],
+  );
+
+  useEffect(() => {
+    if (isOnline) {
+      runCatalogLoad();
       return;
     }
 
-    const loadUserData = async () => {
-      try {
-        const [dbWatchlist, dbHistory] = await Promise.all([
-          getWatchlistFromDB(),
-          getHistoryFromDB(),
-        ]);
-        setWatchlist(dbWatchlist);
-        setWatchHistory(dbHistory);
-      } catch (err) {
-        console.error('Failed to load user data:', err);
-      }
-    };
-
-    loadUserData();
-  }, [user]);
-
-  const runCatalogLoad = useCallback(async (mode = 'load') => {
-    catalogAbortRef.current?.abort();
-    const controller = new AbortController();
-    catalogAbortRef.current = controller;
-
-    setIsDbLoading(true);
-    setSyncStatus(mode === 'refresh' ? 'refresh' : 'loading');
-    let completionStatus = 'done';
-
-    try {
-      const loader = mode === 'refresh' ? refreshCatalog : loadCatalog;
-      const dataset = await loader({
-        signal: controller.signal,
-        onProgress: (count, status, details) => {
-          setSyncCount(count);
-          setSyncStatus(status);
-          completionStatus = status;
-          if (status === 'partial' && details?.retryAfterMs) {
-            catalogRetryDelay.current = details.retryAfterMs;
-          }
-        },
-      });
-
-      if (!controller.signal.aborted) {
-        applyCatalog(dataset);
-        setSyncCount(dataset.length);
-        setSyncStatus(completionStatus === 'partial' ? 'partial' : 'done');
-      }
-    } catch (err) {
-      if (err.name !== 'AbortError') {
-        console.error('Catalog load failed:', err);
-        setSyncStatus('error');
-      }
-    } finally {
-      if (!controller.signal.aborted) {
-        setIsDbLoading(false);
-      }
-    }
-  }, [applyCatalog]);
-
-  useEffect(() => {
-    runCatalogLoad('load');
-  }, [runCatalogLoad]);
-
-  useEffect(() => {
-    clearTimeout(catalogRetryTimer.current);
-
-    if (!isOnline || syncStatus !== 'partial') return undefined;
-
-    catalogRetryTimer.current = setTimeout(() => {
-      runCatalogLoad('refresh');
-    }, catalogRetryDelay.current);
-
-    return () => clearTimeout(catalogRetryTimer.current);
-  }, [isOnline, syncStatus, runCatalogLoad]);
+    setSyncStatus('offline');
+  }, [isOnline, runCatalogLoad]);
 
   useEffect(() => {
     if (!isOnline) {
-      wasOffline.current = true;
+      if (!wasOffline.current) {
+        addToast('You are offline. Content may be stale.', 'warning');
+        wasOffline.current = true;
+      }
       return;
     }
 
     if (wasOffline.current) {
       wasOffline.current = false;
-      runCatalogLoad('refresh');
-      addToast('Back online — catalog updated from cache.', 'success');
+      addToast('Back online. Refreshing data...', 'success');
+      runCatalogLoad(true);
     }
-  }, [isOnline, runCatalogLoad, addToast]);
+  }, [addToast, isOnline, runCatalogLoad]);
 
-  const addToWatchlist = useCallback(async (movie) => {
-    if (!user) {
-      addToast('Sign in to save titles to your list.', 'error');
-      return;
-    }
+  const getMovieId = (movie) => movie?.id || movie?.title?.id || movie?.tconst || null;
 
-    if (watchlist.some((item) => item.id === movie.id)) return;
+  const addToWatchlist = useCallback(
+    (movie) => {
+      const nextList = (prev) => {
+        const id = getMovieId(movie);
+        if (!id) return prev;
+        const filtered = prev.filter((item) => getMovieId(item) !== id);
+        return [...filtered, movie];
+      };
 
-    try {
-      await dbSaveWatchlist(movie);
-      setWatchlist((prev) => [...prev, movie]);
-      addToast(`Added "${movie.primaryTitle}" to your list.`, 'success');
-    } catch (err) {
-      console.error('Watchlist save error:', err);
-      addToast('Could not save to watchlist.', 'error');
-    }
-  }, [user, watchlist, addToast]);
-
-  const removeFromWatchlist = useCallback(async (movieId) => {
-    if (!user) return;
-
-    const movie = watchlist.find((item) => item.id === movieId);
-    if (!movie) return;
-
-    try {
-      await dbRemoveWatchlist(movieId);
-      setWatchlist((prev) => prev.filter((item) => item.id !== movieId));
-      addToast(`Removed "${movie.primaryTitle}" from your list.`, 'info');
-    } catch (err) {
-      console.error('Watchlist remove error:', err);
-    }
-  }, [user, watchlist, addToast]);
-
-  const addToHistory = useCallback(async (movie) => {
-    if (!user) return;
-
-    const historyEntry = { ...movie, watchedAt: Date.now() };
-
-    try {
-      await dbSaveHistory(historyEntry);
-      setWatchHistory((prev) => {
-        const filtered = prev.filter((item) => item.id !== movie.id);
-        return [historyEntry, ...filtered];
+      setWatchlist((prev) => {
+        const next = nextList(prev);
+        persistWatchlist(next);
+        return next;
       });
-    } catch (err) {
-      console.error('History save error:', err);
-    }
-  }, [user]);
 
-  const removeFromHistory = useCallback(async (movieId) => {
-    if (!user) return;
+      addToast('Added to watchlist', 'success');
+    },
+    [addToast, persistWatchlist],
+  );
 
-    try {
-      await dbRemoveHistory(movieId);
-      setWatchHistory((prev) => prev.filter((item) => item.id !== movieId));
-    } catch (err) {
-      console.error('History delete error:', err);
-    }
-  }, [user]);
+  const removeFromWatchlist = useCallback(
+    (movieId) => {
+      setWatchlist((prev) => {
+        const next = prev.filter((item) => getMovieId(item) !== String(movieId));
+        persistWatchlist(next);
+        return next;
+      });
+      addToast('Removed from watchlist', 'info');
+    },
+    [addToast, persistWatchlist],
+  );
 
-  const clearHistory = useCallback(async () => {
-    if (!user) return;
+  const addToHistory = useCallback(
+    (movie) => {
+      const nextHistory = (prev) => {
+        const id = getMovieId(movie);
+        if (!id) return prev;
+        const filtered = prev.filter((item) => getMovieId(item) !== id);
+        return [movie, ...filtered].slice(0, 50);
+      };
 
-    try {
-      await clearAllHistoryFromDB();
-      setWatchHistory([]);
-      addToast('Watch history cleared.', 'info');
-    } catch (err) {
-      console.error('History clear error:', err);
-    }
-  }, [user, addToast]);
+      setWatchHistory((prev) => {
+        const next = nextHistory(prev);
+        persistHistory(next);
+        return next;
+      });
+
+      addToast('Added to watch history', 'success');
+    },
+    [addToast, persistHistory],
+  );
+
+  const removeFromHistory = useCallback(
+    (movieId) => {
+      setWatchHistory((prev) => {
+        const next = prev.filter((item) => getMovieId(item) !== String(movieId));
+        persistHistory(next);
+        return next;
+      });
+      addToast('Removed from watch history', 'info');
+    },
+    [addToast, persistHistory],
+  );
+
+  const clearHistory = useCallback(() => {
+    setWatchHistory([]);
+    persistHistory([]);
+    addToast('Watch history cleared', 'info');
+  }, [addToast, persistHistory]);
+
+  const searchIndices = useMemo(() => buildSearchIndices(allMovies), [allMovies]);
 
   const value = {
     watchlist,
     watchHistory,
     allMovies,
     isDbLoading,
-    isIndexing,
     syncStatus,
-    syncCount,
-    catalogTarget: TARGET_CATALOG_SIZE,
-    idIndex,
-    titleIndex,
-    yearIndex,
     toasts,
     addToast,
     addToWatchlist,
@@ -289,7 +294,7 @@ export const AppProvider = ({ children }) => {
     addToHistory,
     removeFromHistory,
     clearHistory,
-    refreshCatalog: () => runCatalogLoad('refresh'),
+    ...searchIndices,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

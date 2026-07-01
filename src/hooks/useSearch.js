@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { searchTitles } from '../services/api';
 import { useAppContext } from '../context/AppContext';
 import { useOnlineStatus } from './useOnlineStatus';
@@ -15,6 +15,13 @@ export const useSearch = () => {
 
   const [results, setResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const searchControllerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      searchControllerRef.current?.abort();
+    };
+  }, []);
 
   const searchLocal = useCallback((q) => {
     if (q.startsWith('tt')) {
@@ -62,25 +69,35 @@ export const useSearch = () => {
       return;
     }
 
+    searchControllerRef.current?.abort();
+    const controller = new AbortController();
+    searchControllerRef.current = controller;
+
     setIsSearching(true);
 
     try {
       if (isOnline && !q.startsWith('tt') && q.length !== 4) {
-        const controller = new AbortController();
         const data = await searchTitles(q, 50, controller.signal);
+        if (controller.signal.aborted) return;
+
         if (data?.titles?.length) {
           setResults(data.titles);
           return;
         }
       }
 
-      const local = searchLocal(q);
-      setResults(local.slice(0, 50));
+      if (!controller.signal.aborted) {
+        const local = searchLocal(q);
+        setResults(local.slice(0, 50));
+      }
     } catch (err) {
+      if (err.name === 'AbortError') return;
       const local = searchLocal(q);
       setResults(local.slice(0, 50));
     } finally {
-      setIsSearching(false);
+      if (searchControllerRef.current === controller && !controller.signal.aborted) {
+        setIsSearching(false);
+      }
     }
   }, [isOnline, searchLocal]);
 

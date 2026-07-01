@@ -15,29 +15,32 @@ const Home = () => {
 
     // Hero: the highest-rated movie with a backdrop image
     const heroMovie = [...allMovies]
-      .filter(m => m.backdropImage?.url)
-      .sort((a, b) => b.rating.aggregateRating - a.rating.aggregateRating)[0];
+      .filter((m) => m.backdropImage?.url)
+      .sort(
+        (a, b) =>
+          (b.rating?.aggregateRating || 0) - (a.rating?.aggregateRating || 0),
+      )[0] || allMovies[0];
 
     // Trending: movies with highest vote counts
     const trending = [...allMovies]
-      .sort((a, b) => b.rating.voteCount - a.rating.voteCount)
+      .sort((a, b) => (b.rating?.voteCount || 0) - (a.rating?.voteCount || 0))
       .slice(0, 30);
 
     // Popular: highest aggregate rating
     const popular = [...allMovies]
-      .sort((a, b) => b.rating.aggregateRating - a.rating.aggregateRating)
+      .sort((a, b) => (b.rating?.aggregateRating || 0) - (a.rating?.aggregateRating || 0))
       .slice(0, 30);
 
     // Movies only
     const movies = allMovies
-      .filter(m => m.type === 'MOVIE')
-      .sort((a, b) => b.startYear - a.startYear)
+      .filter((m) => String(m.type || '').toLowerCase() === 'movie')
+      .sort((a, b) => (b.startYear || 0) - (a.startYear || 0))
       .slice(0, 30);
 
     // TV Shows only
     const tvShows = allMovies
-      .filter(m => m.type === 'TV_SERIES')
-      .sort((a, b) => b.rating.aggregateRating - a.rating.aggregateRating)
+      .filter((m) => String(m.type || '').toLowerCase().includes('tv'))
+      .sort((a, b) => (b.rating?.aggregateRating || 0) - (a.rating?.aggregateRating || 0))
       .slice(0, 30);
 
     // Action genre

@@ -1,6 +1,6 @@
 # Binaire
 
-Netflix-style streaming UI built as a frontend hiring assessment. React 18, Vite, Firebase Auth, IndexedDB offline cache, and client-side catalog search.
+Netflix-style streaming UI built as a frontend hiring assessment. React 18, Vite, local mock auth, IndexedDB offline cache, and client-side catalog search.
 
 ## Run locally
 
@@ -14,7 +14,7 @@ Open http://localhost:3000
 
 ## Environment
 
-Copy `.env.example` to `.env` and add Firebase credentials if you want real auth. Without them, the app falls back to local mock auth (any email + 6+ char password works).
+Copy `.env.example` to `.env` if you want to override the API base URL. The app uses local mock auth by default (any email + 6+ char password works).
 
 The IMDb API base URL defaults to `https://api.imdbapi.dev`. On first load the app paginates real titles from the API and caches them in IndexedDB for offline browsing. If the API is rate-limited, the real titles fetched so far remain usable and syncing resumes automatically after the cooldown.
 

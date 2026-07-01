@@ -1,124 +1,77 @@
 import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  signInWithEmailAndPassword as firebaseSignIn, 
-  createUserWithEmailAndPassword as firebaseSignUp, 
-  signOut as firebaseSignOut, 
-  onAuthStateChanged as firebaseAuthStateChanged
+import {
+  getAuth,
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  updateProfile,
 } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
-// Retrieve credentials
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
-};
+const {
+  VITE_FIREBASE_API_KEY,
+  VITE_FIREBASE_AUTH_DOMAIN,
+  VITE_FIREBASE_PROJECT_ID,
+  VITE_FIREBASE_STORAGE_BUCKET,
+  VITE_FIREBASE_MESSAGING_SENDER_ID,
+  VITE_FIREBASE_APP_ID,
+} = import.meta.env;
 
-// Check if credentials are provided
-const isFirebaseConfigured = !!firebaseConfig.apiKey && firebaseConfig.apiKey !== 'your_api_key_here';
+export const isFirebaseConfigured = Boolean(
+  VITE_FIREBASE_API_KEY &&
+    VITE_FIREBASE_AUTH_DOMAIN &&
+    VITE_FIREBASE_PROJECT_ID &&
+    VITE_FIREBASE_APP_ID,
+);
 
-let auth;
-let isMock = false;
+let auth = null;
+let db = null;
 
 if (isFirebaseConfigured) {
   try {
-    const app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    console.log('Firebase Authentication initialized successfully.');
+    const firebaseConfig = {
+      apiKey: VITE_FIREBASE_API_KEY,
+      authDomain: VITE_FIREBASE_AUTH_DOMAIN,
+      projectId: VITE_FIREBASE_PROJECT_ID,
+      storageBucket: VITE_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: VITE_FIREBASE_MESSAGING_SENDER_ID,
+      appId: VITE_FIREBASE_APP_ID,
+    };
+    initializeApp(firebaseConfig);
+    auth = getAuth();
+    db = getFirestore();
   } catch (error) {
-    console.error('Firebase initialization failed, falling back to Mock Auth:', error);
-    isMock = true;
+    console.error('Firebase initialization failed:', error);
   }
 } else {
-  console.warn('Firebase configuration missing in .env. Running in Simulated Auth mode.');
-  isMock = true;
+  console.warn('Firebase not configured. Set env vars in .env');
 }
 
-// --- MOCK AUTHENTICATION SYSTEM ---
-const MOCK_USERS_KEY = 'netflix_mock_users';
-const CURRENT_USER_KEY = 'netflix_current_user';
-
-const getMockUsers = () => JSON.parse(localStorage.getItem(MOCK_USERS_KEY) || '[]');
-const saveMockUsers = (users) => localStorage.setItem(MOCK_USERS_KEY, JSON.stringify(users));
-
-const mockAuth = {
-  currentUser: JSON.parse(localStorage.getItem(CURRENT_USER_KEY) || 'null'),
-  
-  listeners: new Set(),
-  
-  notifyListeners(user) {
-    mockAuth.currentUser = user;
-    this.listeners.forEach(callback => callback(user));
-  }
-};
-
-// --- AUTH API GATEWAY ---
-
 export const signup = async (email, password) => {
-  if (isMock) {
-    await new Promise(resolve => setTimeout(resolve, 600)); // Simulate delay
-    const users = getMockUsers();
-    
-    if (users.find(u => u.email === email)) {
-      throw new Error('auth/email-already-in-use');
-    }
-    
-    const newUser = { uid: `mock-${Date.now()}`, email, displayName: email.split('@')[0] };
-    users.push({ ...newUser, password });
-    saveMockUsers(users);
-    
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(newUser));
-    mockAuth.notifyListeners(newUser);
-    return { user: newUser };
-  } else {
-    return firebaseSignUp(auth, email, password);
-  }
+  if (!auth) throw new Error('Firebase not initialized');
+  const result = await createUserWithEmailAndPassword(auth, email, password);
+  await updateProfile(result.user, { displayName: email.split('@')[0] });
+  return result;
 };
 
 export const login = async (email, password) => {
-  if (isMock) {
-    await new Promise(resolve => setTimeout(resolve, 600)); // Simulate delay
-    const users = getMockUsers();
-    const userMatch = users.find(u => u.email === email && u.password === password);
-    
-    if (!userMatch) {
-      throw new Error('auth/invalid-credential');
-    }
-    
-    const loggedUser = { uid: userMatch.uid, email: userMatch.email, displayName: userMatch.displayName };
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(loggedUser));
-    mockAuth.notifyListeners(loggedUser);
-    return { user: loggedUser };
-  } else {
-    return firebaseSignIn(auth, email, password);
-  }
+  if (!auth) throw new Error('Firebase not initialized');
+  return await signInWithEmailAndPassword(auth, email, password);
 };
 
 export const logout = async () => {
-  if (isMock) {
-    localStorage.removeItem(CURRENT_USER_KEY);
-    mockAuth.notifyListeners(null);
-    return true;
-  } else {
-    return firebaseSignOut(auth);
-  }
+  if (!auth) throw new Error('Firebase not initialized');
+  return await signOut(auth);
 };
 
 export const subscribeToAuthChanges = (callback) => {
-  if (isMock) {
-    mockAuth.listeners.add(callback);
-    // Trigger initial status
-    callback(mockAuth.currentUser);
-    return () => {
-      mockAuth.listeners.delete(callback);
-    };
-  } else {
-    return firebaseAuthStateChanged(auth, callback);
+  if (!auth) {
+    callback(null);
+    return () => {};
   }
+  return onAuthStateChanged(auth, callback);
 };
 
-export { auth, isMock };
-export default auth;
+export { auth, db };
+export default { signup, login, logout, subscribeToAuthChanges, auth, db };
